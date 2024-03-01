@@ -9,52 +9,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
 
-enum TCPClientError: Error {
-    case connectionFailed
-    case sendFailed
-}
-
-class TCPClient {
-    private let address: String
-    private let port: Int32
-    
-    init(address: String, port: Int) {
-        self.address = address
-        self.port = Int32(port)
-    }
-    
-    func mysend(data: Data) -> Result<Void, TCPClientError> {
-        var addr = sockaddr_in()
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port = 9020
-        addr.sin_addr.s_addr = inet_addr(self.address)
-        
-        let clientSocket = socket(AF_INET, SOCK_STREAM, 0)
-        if clientSocket == -1 {
-            return .failure(.connectionFailed)
-        }
-        
-        if connect(clientSocket, sockaddr_cast(&addr), socklen_t(MemoryLayout<sockaddr_in>.size)) == -1 {
-            return .failure(.connectionFailed)
-        }
-        
-        defer {
-            close(clientSocket)
-        }
-        
-        let bytesSent = data.withUnsafeBytes { send(clientSocket, $0, data.count, 0) }
-        if bytesSent < 0 {
-            return .failure(.sendFailed)
-        }
-        
-        return .success(())
-    }
-    
-    private func sockaddr_cast<T>(_ value: UnsafeMutablePointer<T>) -> UnsafeMutablePointer<sockaddr> {
-        return UnsafeMutableRawPointer(value).bindMemory(to: sockaddr.self, capacity: 1)
-    }
-}
-
 struct ContentView: View {
     @State private var ipAddress: String = ""
     @StateObject private var filePickerDelegate = FilePickerDelegate()
@@ -83,14 +37,66 @@ struct ContentView: View {
         }
     }
     
-    func sendFile() {
-        // This function is called when the "Send File" button is tapped
-        // It triggers the action to send the selected file to the IP address
-        guard let selectedFileURL = filePickerDelegate.selectedFileURL else { return }
-        
-        // Implement file sending logic here
-        print("Sending file: \(selectedFileURL.absoluteString) to IP: \(ipAddress)")
+    func showAlert(message: String) {
+        let alertController = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        let okAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+        alertController.addAction(okAction)
     }
+    
+    func sendFile() {
+        let selectedFileURL = filePickerDelegate.selectedFileURL
+        
+        let port = 9020 // Assuming the port is fixed at 9020
+        
+        do {
+            let inputStream = try InputStream(url: selectedFileURL!)
+            inputStream!.open()
+            defer {
+                inputStream!.close()
+            }
+            
+            let outputStream = try createOutputStream(ipAddress: ipAddress, port: port)
+            outputStream.open()
+            defer {
+                outputStream.close()
+            }
+            
+            var buffer = [UInt8](repeating: 0, count: 4096)
+            var bytesRead = 0
+            
+            repeat {
+                bytesRead = inputStream!.read(&buffer, maxLength: buffer.count)
+                if bytesRead > 0 {
+                    let bytesWritten = outputStream.write(buffer, maxLength: bytesRead)
+                    if bytesWritten < 0 {
+                        print("Failed to write to output stream")
+                        return
+                    }
+                } else if bytesRead < 0 {
+                    print("Failed to read from input stream")
+                    return
+                }
+            } while bytesRead > 0
+            
+            print("File sent successfully")
+        } catch {
+            print("Failed to send file: \(error.localizedDescription)")
+        }
+    }
+    
+    func createOutputStream(ipAddress: String, port: Int) throws -> OutputStream {
+        var outputStream: OutputStream?
+        Stream.getStreamsToHost(withName: ipAddress, port: port, inputStream: nil, outputStream: &outputStream)
+        guard let stream = outputStream else {
+            throw NetworkError.unableToCreateOutputStream
+        }
+        return stream
+    }
+        
+}
+
+enum NetworkError: Error {
+    case unableToCreateOutputStream
 }
 
 class FilePickerDelegate: NSObject, ObservableObject, UIDocumentPickerDelegate {
