@@ -119,7 +119,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
     var filePickerDelegate: FilePickerDelegate
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.plainText, .pdf])
+        let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType("public.item")!])
         documentPicker.delegate = filePickerDelegate
         return documentPicker
     }
