@@ -1,23 +1,27 @@
-//
-//  ContentView.swift
-//  poulette
-//
-//  Created by lisbeth on 3/1/24.
-//
-
 import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
 
 struct ContentView: View {
     @State private var ipAddress: String = ""
+    @State private var port = 9020
     @StateObject private var filePickerDelegate = FilePickerDelegate()
 
     var body: some View {
         VStack {
             TextField("Enter IP Address", text: $ipAddress)
                 .padding()
+                .keyboardType(.numberPad)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+            
+            TextField("Enter Port", value: $port, formatter: {
+                let formatter = NumberFormatter()
+                formatter.usesGroupingSeparator = false
+                return formatter
+                }())
+                .textFieldStyle(.roundedBorder)
+                .keyboardType(.numberPad)
+                .padding()
             
             Button("Choose File") {
                 filePickerDelegate.selectFile()
@@ -45,9 +49,7 @@ struct ContentView: View {
     
     func sendFile() {
         let selectedFileURL = filePickerDelegate.selectedFileURL
-        
-        let port = 9020 // Assuming the port is fixed at 9020
-        
+                
         do {
             let inputStream = try InputStream(url: selectedFileURL!)
             inputStream!.open()
