@@ -2,11 +2,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
 
+
 struct ContentView: View {
     @State private var ipAddress: String = "192.168.1.167"
     @State private var port = 9020
     @StateObject private var filePickerDelegate = FilePickerDelegate()
-    @State private var errorMessage: String?
+    @State private var Message: String?
 
     var body: some View {
         VStack {
@@ -14,7 +15,7 @@ struct ContentView: View {
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onChange(of: ipAddress) { newValue in
-                    errorMessage = self.isValidIP(ip: newValue) ? nil : "IP Address is invalid."
+                    Message = self.isValidIP(ip: newValue) ? nil : "IP Address is invalid."
                 }
             
             TextField("Enter Port", value: $port, formatter: {
@@ -25,7 +26,7 @@ struct ContentView: View {
                 .textFieldStyle(.roundedBorder)
                 .keyboardType(.numberPad)
                 .onChange(of: port) { newValue in
-                    errorMessage = 1...65536 ~= port ? nil : "Port must be a number in [1;aa65536]."
+                    Message = 1...65536 ~= port ? nil : "Port must be a number in [1;65536]."
                 }
                 .padding()
             
@@ -39,10 +40,10 @@ struct ContentView: View {
                 sendFile()
             }
             .padding()
-            .disabled(errorMessage != nil || filePickerDelegate.selectedFileURL == nil)
+            .disabled(Message != nil || filePickerDelegate.selectedFileURL == nil)
 
-            if let errorMessage = errorMessage {
-                Text(errorMessage)
+            if let Message = Message {
+                Text(Message)
                     .foregroundColor(.red)
                     .padding()
             }
@@ -59,11 +60,6 @@ struct ContentView: View {
         return parts.count == 4 && nums.count == 4 && !nums.contains { $0 < 0 || $0 > 255 }
 }
 
-    func showAlert(message: String) {
-        let alertController = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-        let okAction = UIAlertAction(title: "OK", style: .default, handler: nil)
-        alertController.addAction(okAction)
-    }
     
     func sendFile() {
         let selectedFileURL = filePickerDelegate.selectedFileURL
@@ -71,32 +67,17 @@ struct ContentView: View {
         do {
             let inputStream = try InputStream(url: selectedFileURL!)
             inputStream!.open()
-            defer {
-                inputStream!.close()
-            }
+            defer {inputStream!.close()}
             
             let outputStream = try createOutputStream(ipAddress: ipAddress, port: port)
             outputStream.open()
-            defer {
-                outputStream.close()
-            }
+            defer {outputStream.close()}
             
-            var buffer = [UInt8](repeating: 0, count: 4096)
-            var bytesRead = 0
-            
+            var buffer = [UInt8](repeating: 0, count: 8192)
             repeat {
-                bytesRead = inputStream!.read(&buffer, maxLength: buffer.count)
-                if bytesRead > 0 {
-                    let bytesWritten = outputStream.write(buffer, maxLength: bytesRead)
-                    if bytesWritten < 0 {
-                        print("Failed to write to output stream")
-                        return
-                    }
-                } else if bytesRead < 0 {
-                    print("Failed to read from input stream")
-                    return
-                }
-            } while bytesRead > 0
+                let read = inputStream!.read(&buffer, maxLength: buffer.count)
+                outputStream.write(buffer, maxLength: read)
+            } while inputStream!.hasBytesAvailable
             
             print("File sent successfully")
         } catch {
@@ -107,12 +88,9 @@ struct ContentView: View {
     func createOutputStream(ipAddress: String, port: Int) throws -> OutputStream {
         var outputStream: OutputStream?
         Stream.getStreamsToHost(withName: ipAddress, port: port, inputStream: nil, outputStream: &outputStream)
-        guard let stream = outputStream else {
-            throw NetworkError.unableToCreateOutputStream
-        }
+        guard let stream = outputStream else {throw NetworkError.unableToCreateOutputStream}
         return stream
     }
-        
 }
 
 enum NetworkError: Error {
