@@ -2,12 +2,16 @@ import SwiftUI
 import UniformTypeIdentifiers
 import Foundation
 
+struct Message {
+    let msg: String
+    let error: Bool
+}
 
 struct ContentView: View {
     @State private var ipAddress: String = "192.168.1.167"
     @State private var port = 9020
     @StateObject private var filePickerDelegate = FilePickerDelegate()
-    @State private var Message: String?
+    @State private var message: Message?
 
     var body: some View {
         VStack {
@@ -15,7 +19,7 @@ struct ContentView: View {
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onChange(of: ipAddress) { newValue in
-                    Message = self.isValidIP(ip: newValue) ? nil : "IP Address is invalid."
+                    message = self.isValidIP(ip: newValue) ? nil : Message(msg:"IP Address is invalid.", error:true)
                 }
             
             TextField("Enter Port", value: $port, formatter: {
@@ -26,7 +30,7 @@ struct ContentView: View {
                 .textFieldStyle(.roundedBorder)
                 .keyboardType(.numberPad)
                 .onChange(of: port) { newValue in
-                    Message = 1...65536 ~= port ? nil : "Port must be a number in [1;65536]."
+                    message = 1...65536 ~= port ? nil : Message(msg:"Port must be a number in [1;65536].", error: true)
                 }
                 .padding()
             
@@ -40,11 +44,11 @@ struct ContentView: View {
                 sendFile()
             }
             .padding()
-            .disabled(Message != nil || filePickerDelegate.selectedFileURL == nil)
+            .disabled(message != nil || filePickerDelegate.selectedFileURL == nil)
 
-            if let Message = Message {
-                Text(Message)
-                    .foregroundColor(.red)
+            if let m = message {
+                Text(m.msg)
+                    .foregroundColor(m.error == true ? .red : .green)
                     .padding()
             }
         }
@@ -79,9 +83,9 @@ struct ContentView: View {
                 outputStream.write(buffer, maxLength: read)
             } while inputStream!.hasBytesAvailable
             
-            print("File sent successfully")
+            message = Message(msg: "File sent successfully", error: false)
         } catch {
-            print("Failed to send file: \(error.localizedDescription)")
+            message = Message(msg: "Couldn't send file", error: true)
         }
     }
     
@@ -120,9 +124,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
         return documentPicker
     }
     
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {
-        // Update logic here
-    }
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
 }
 
 struct ContentView_Previews: PreviewProvider {
