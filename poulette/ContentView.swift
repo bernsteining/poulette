@@ -3,16 +3,19 @@ import UniformTypeIdentifiers
 import Foundation
 
 struct ContentView: View {
-    @State private var ipAddress: String = ""
+    @State private var ipAddress: String = "192.168.1.167"
     @State private var port = 9020
     @StateObject private var filePickerDelegate = FilePickerDelegate()
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack {
             TextField("Enter IP Address", text: $ipAddress)
                 .padding()
-                .keyboardType(.numberPad)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .onChange(of: ipAddress) { newValue in
+                    errorMessage = self.isValidIP(ip: newValue) ? nil : "IP Address is invalid."
+                }
             
             TextField("Enter Port", value: $port, formatter: {
                 let formatter = NumberFormatter()
@@ -21,6 +24,9 @@ struct ContentView: View {
                 }())
                 .textFieldStyle(.roundedBorder)
                 .keyboardType(.numberPad)
+                .onChange(of: port) { newValue in
+                    errorMessage = 1...65536 ~= port ? nil : "Port must be a number in [1;aa65536]."
+                }
                 .padding()
             
             Button("Choose File") {
@@ -33,14 +39,26 @@ struct ContentView: View {
                 sendFile()
             }
             .padding()
-            .disabled(ipAddress.isEmpty || filePickerDelegate.selectedFileURL == nil)
+            .disabled(errorMessage != nil || filePickerDelegate.selectedFileURL == nil)
+
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .padding()
+            }
         }
         .padding()
         .sheet(isPresented: $filePickerDelegate.isPresented) {
             DocumentPicker(filePickerDelegate: filePickerDelegate)
         }
     }
-    
+
+    func isValidIP(ip: String) -> Bool {
+        let parts = ip.components(separatedBy:".")
+        let nums = parts.flatMap { Int($0) }
+        return parts.count == 4 && nums.count == 4 && !nums.contains { $0 < 0 || $0 > 255 }
+}
+
     func showAlert(message: String) {
         let alertController = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
         let okAction = UIAlertAction(title: "OK", style: .default, handler: nil)
