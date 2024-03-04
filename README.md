@@ -24,4 +24,4 @@ And I don't want to power up my laptop each time I wanna play so this app just a
 
 - finish https://stackoverflow.com/questions/4952820/test-ios-app-on-device-without-apple-developer-program-or-jailbreak setup
 - autoselect file goldhen if present
-- custom ipv6 & ipv4 keyboardtypes based on ipv4, ipv6 enums (https://stackoverflow.com/questions/46579414/how-to-make-uikeyboardtype-for-hex-input-only)
+- custom ipv6 keyboardtype (https://stackoverflow.com/questions/46579414/how-to-make-uikeyboardtype-for-hex-input-only), think about a way to switch between keyboardtypes?

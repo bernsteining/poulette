@@ -32,7 +32,7 @@ struct ContentView: View {
             TextField("Enter IP Address", text: $ipAddress)
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-                .keyboardType(.numbersAndPunctuation)
+                .keyboardType(.decimalPad)
                 .onChange(of: ipAddress) { newValue in
                     message = newValue.isIpAddress() ? nil : Message(msg:"IP Address is invalid.", error:true)
                 }
