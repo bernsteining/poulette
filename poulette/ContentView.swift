@@ -7,6 +7,20 @@ struct Message {
     let error: Bool
 }
 
+extension String {
+        func isIPv4() -> Bool {
+            var sin = sockaddr_in()
+            return self.withCString({ cstring in inet_pton(AF_INET, cstring, &sin.sin_addr) }) == 1
+        }
+
+        func isIPv6() -> Bool {
+            var sin6 = sockaddr_in6()
+            return self.withCString({ cstring in inet_pton(AF_INET6, cstring, &sin6.sin6_addr) }) == 1
+        }
+
+        func isIpAddress() -> Bool { return self.isIPv6() || self.isIPv4() }
+}
+
 struct ContentView: View {
     @State private var ipAddress: String = "192.168.1.167"
     @State private var port = 9020
@@ -18,8 +32,9 @@ struct ContentView: View {
             TextField("Enter IP Address", text: $ipAddress)
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .keyboardType(.numbersAndPunctuation)
                 .onChange(of: ipAddress) { newValue in
-                    message = self.isValidIP(ip: newValue) ? nil : Message(msg:"IP Address is invalid.", error:true)
+                    message = newValue.isIpAddress() ? nil : Message(msg:"IP Address is invalid.", error:true)
                 }
             
             TextField("Enter Port", value: $port, formatter: {
@@ -57,12 +72,6 @@ struct ContentView: View {
             DocumentPicker(filePickerDelegate: filePickerDelegate)
         }
     }
-
-    func isValidIP(ip: String) -> Bool {
-        let parts = ip.components(separatedBy:".")
-        let nums = parts.flatMap { Int($0) }
-        return parts.count == 4 && nums.count == 4 && !nums.contains { $0 < 0 || $0 > 255 }
-}
 
     
     func sendFile() {
